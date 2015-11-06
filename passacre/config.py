@@ -5,7 +5,7 @@ from __future__ import unicode_literals, print_function
 
 from passacre.schema import multibase_of_schema
 from passacre.util import nested_set, jloads, jdumps, errormark
-from passacre import features, generator
+from passacre import features, generator, rfc2289
 
 import collections
 import json
@@ -55,7 +55,13 @@ class ConfigBase(object):
     def load_words_file(self, path):
         if path is None:
             return
+
         self.word_list_file = path
+
+        if path.startswith(':'):
+            self._load_internal_wordlist(path)
+            return
+
         try:
             infile = open(os.path.expanduser(path))
         except IOError as e:
@@ -63,6 +69,16 @@ class ConfigBase(object):
         else:
             with infile:
                 self.words = [word.strip() for word in infile]
+
+    def _load_internal_wordlist(self, path):
+        if path == ":skey:":
+            self.words = rfc2289.words
+        elif path == ":skey:lower":
+            self.words = [w.lower() for w in rfc2289.words]
+        elif path == ":skey:title":
+            self.words = [w.title() for w in rfc2289.words]
+        else:
+            raise ValueError("Unknown internal wordlist type {}".format(path))
 
     def fill_out_config(self, config):
         config['multibase'] = multibase_of_schema(config['schema'], self.words)
